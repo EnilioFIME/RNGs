@@ -52,7 +52,7 @@ def pointer_casting (x):
 
     return struct.unpack('Q', struct.pack('d', x))[0]
 
-def unsigned_int (x1, x2):
+def unsigned_int (x1, x2):          #32 bit addition and XOR
 
     C1 = pointer_casting(x1)
     C2 = pointer_casting(x2)
