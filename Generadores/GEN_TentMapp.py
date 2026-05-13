@@ -36,7 +36,8 @@ def lfsr (bits_in):
 
     bits_out = np.zeros(len(bits_in), dtype=np.uint8)
 
-    for bit in bits_in:
+    for i in range(len(bits_in)):
+        bit = bits_in[i]
 
         #8 bit LFSR corrector x7 + x3 + x2 + x1
         bit7 = (lfsr_State >> 7) & 1
@@ -49,7 +50,7 @@ def lfsr (bits_in):
 
         lfsr_State = ((lfsr_State << 1) | new_bit) & 0xFF
 
-        bits_out[bit] = bit ^ bit_lfsr
+        bits_out[i] = bit ^ bit_lfsr
 
     return bits_out
 
@@ -62,11 +63,10 @@ def lfsr (bits_in):
 
 # Params
 target_bits = 1_000_000
-bits_per_val = 8
 
 mu = 2                                   # Parametro de crecimiento
 x0 = function_seed (2043379)             # x inicial
-n  = mt.ceil(target_bits / bits_per_val) # Iteraciones
+n  = target_bits                         # Iteraciones
 
 x = np.zeros(n)
 px = np.zeros(n, dtype=np.uint8)
@@ -80,8 +80,7 @@ for i in range(1,n):
     
 bits = ( x >= 0.5 ).astype (np.uint8)
 px = lfsr (bits)
+px = np.packbits(px)
 
 px.tofile("Generadores\BIN_TentMapp.bin")
 print("Secuencia guardada en  : BIN_TentMapp.bin")
-
-

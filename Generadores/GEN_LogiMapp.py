@@ -77,17 +77,21 @@ mu = 3.99                               # Parametro de crecimiento
 x0 = function_seed (2043379)            # x inicial
 n = mt.ceil(target_bits / bits_per_val) # Iteraciones
 
+xtemp = x0
+for _ in range (1000):
+
+    xtemp, _ = mu_change (xtemp, mu)
+
 x = np.zeros(n)
 px = np.zeros(n, dtype=np.uint32)
 
-x [0] = x0
+x [0] = xtemp
+px[0] = unsigned_int (x[0], x0)
 
 for i in range(1,n):
 
     x [i], mu = mu_change (x[i - 1], mu)
-    px[i] = unsigned_int(x[i], x[i-1])
+    px[i] = unsigned_int  (x[i], x[i-1])
 
-px.tofile("Generadores\BIN_LogiMapp.bin")
+px.tofile(r"Generadores\BIN_LogiMapp.bin")
 print("Secuencia guardada en  : BIN_LogiMapp.bin")
-
-
