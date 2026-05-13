@@ -13,6 +13,9 @@ https://numpy.org/doc/stable/reference/generated/numpy.corrcoef.html
 '''
 
 import numpy as np
+import csv
+
+bitstream = "BIN_TentMapp"
 
 def xor_strings (msg: bytes, key: bytes) -> bytes:
 
@@ -43,7 +46,7 @@ def entropy (datos) -> bytes:
 
     return entropia
 
-with open (r"Generadores\BIN_LogiMapp.bin"   , "rb")as f:
+with open (rf"Generadores\{bitstream}.bin"   , "rb")as f:
     keystream   = f.read()
 
 with open (r"EntornoDeSimulacion\mensaje.txt", "rb")as f:
@@ -62,12 +65,29 @@ clip_vector = message_vector[:leng]
 
 correlation = np.corrcoef(clip_vector, cipher_vector) [0,1]
 
-print ("\n======== Entropia =========================================")
-print ("Entropia del Mensaje Original: \t\t", message_entropy)
-print ("Entropia del Mensaje Cifrado:  \t\t", cipher_entropy)
+results = {
 
-print ("\n====== Correlacion ========================================")
-print ("Correlacion del Mensaje Cifrado:  \t", correlation)
+    "Entropia Original" : message_entropy,
+    "Entropoia Cifrado" : cipher_entropy,
+    "Correlacion": correlation,
+    "Bytes Evaluados" : leng
 
-print ("\n===== Bytes Evaluados =====================================")
-print ("Bytes Evaluados:  \t\t\t", leng)
+}
+
+print ("\n" + "=" * 40)
+for text, value in results.items():
+
+    print (f"{text:25}: {value}")
+print ("=" * 40)
+
+route = f"EntornoDeSimulacion\RES_SIM_XORCiph_{bitstream}.csv"
+
+with open(route, "w", newline="", encoding="utf-8") as file:
+    f = csv.writer(file)
+
+    f.writerow(["Metrica", "Valor"])
+
+    for text, value in results.items():
+
+        f.writerow([text, value])
+print(f"CSV GUARDADO EN: {route} ")
