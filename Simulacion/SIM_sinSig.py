@@ -1,9 +1,17 @@
+'''
+
+https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.welch.html
+https://docs.python.org/3/library/zlib.html
+
+
+'''
+
 import numpy as np
 import csv
 import zlib
 from scipy.signal import welch
 
-GEN = "MersTwis"
+GEN = "ChuaSys"
 bitstream = f"BIN_{GEN}"
 
 def calcular_entropia_espectral(senal: np.ndarray) -> float:
@@ -55,15 +63,25 @@ def calcular_dimension_higuchi(senal: np.ndarray, k_max: int = 10) -> float:
 with open(rf"Generadores\{bitstream}.bin", "rb") as f:
     keystream = f.read()
 
-ruido = np.frombuffer(keystream, dtype=np.uint8).astype(float)
-ruido = (ruido - 127.5) / 127.5
-
-muestras = len(ruido)
+ruido_uint8 = np.frombuffer(keystream, dtype=np.uint8)
+muestras = len(ruido_uint8)
 t = np.arange(muestras)
 frecuencia_senoide = 0.01
-senoide = np.sin(2 * np.pi * frecuencia_senoide * t)
 
-senal_mixta = senoide + ruido
+# 1. Generar la senoide flotante original
+senoide_flotante = np.sin(2 * np.pi * frecuencia_senoide * t)
+
+# 2. Cuantizar la senoide a enteros de 8 bits [0, 255] para igualar el RNG
+senoide_uint8 = np.uint8((senoide_flotante + 1.0) * 127.5)
+
+# 3. Enmascaramiento total: usar XOR para que cada bit del ruido mute la senoide
+senal_mixta_uint8 = np.bitwise_xor(senoide_uint8, ruido_uint8)
+
+# 4. Normalizar de vuelta a flotante [-1.0, 1.0] para que las métricas (HFD, Autocorr) funcionen igual
+senal_mixta = (senal_mixta_uint8.astype(float) - 127.5) / 127.5
+
+# Opcional pero estricto: Normalizar la senoide cuantizada para la métrica de "Correlacion vs Senoide"
+senoide = (senoide_uint8.astype(float) - 127.5) / 127.5
 
 entropia_espectral = calcular_entropia_espectral(senal_mixta)
 ratio_comp = calcular_compresion(senal_mixta)
@@ -78,7 +96,7 @@ results = {
     "Ratio Compresion ZLIB": ratio_comp,
     "Autocorrelacion (d=1)": autocorr_1,
     "Autocorrelacion (d=2)": autocorr_2,
-    "Informacion Mutua (lag=1)": info_mutua,
+    "Informacion Mutua (lag=1) bits": info_mutua,
     "Dimension Higuchi": higuchi_fd,
     "Correlacion vs Senoide": correlacion_base,
     "Muestras Evaluadas n": muestras
