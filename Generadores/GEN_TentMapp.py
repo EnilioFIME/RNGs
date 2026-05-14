@@ -62,13 +62,13 @@ def _lfsr (bits_in):
 '''
 
 # Params
-mu = 2                                   # Parametro de crecimiento
+mu = 1.9999999                  # Parametro de crecimiento
 seed = 2043379
 
 def gen_bits (bits_n):
 
-    x0 = _function_seed (seed)                # x inicial
-    n  = bits_n                         # Iteraciones
+    x0 = _function_seed (seed)  # x inicial
+    n  = bits_n                 # Iteraciones
 
     x = np.zeros(n)
     px = np.zeros(n, dtype=np.uint8)
@@ -77,7 +77,11 @@ def gen_bits (bits_n):
 
     for i in range(1,n):
 
-        x [ i ] = _tent_mapping (x[ i - 1 ], mu) + 1e-15 # Agregar ruido microscopido
+        x [ i ] = _tent_mapping (x[ i - 1 ], mu) + 1e-14 # Agregar ruido microscopido
+
+        ruido_simulado = ((x[i - 1] * 123456.7) % 1) * 1e-13 
+        x [ i ] += ruido_simulado
+
         x [ i ] %= 1.0                                  # Aegurarnos que no se "salga" del rango
         
     bits = ( x >= 0.5 ).astype (np.uint8)

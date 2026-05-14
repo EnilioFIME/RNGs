@@ -65,6 +65,10 @@ def _unsigned_int (x1, x2):          #32 bit addition and XOR
     # v = ((M1 + M4) XOR M3) + M2 En 32 bits
     v = ((((M1 + M4) & 0xFFFFFFFF) ^ M3) + M2) & 0xFFFFFFFF
 
+    v ^= (v >> 13)
+    v ^= (v << 17) & 0xFFFFFFFF
+    v ^= (v >> 5)
+
     return v
 
 mu = 3.99                      # Parametro de crecimiento
@@ -86,12 +90,15 @@ def gen_bits (bits_n, mu_init = 3.99) :
     px = np.zeros(n, dtype=np.uint32)
 
     x [0] = xtemp
-    px[0] = _unsigned_int (x[0], x0)
 
     for i in range(1,n):
 
         x [i], mu = _mu_change (x[i - 1], mu)
-        px[i] = _unsigned_int  (x[i], x[i-1])
+
+    for i in range(n):
+
+        x2 = ( i  + 33 ) % n
+        px [i] = _unsigned_int(x[i], x[x2])
 
     return px
 
@@ -110,5 +117,7 @@ if __name__ == "__main__":
 
     bits = gen_bits (val)
 
-    bits.tofile(r"Generadores\BIN_LogiMapp.bin")
+    bits_big_endian = bits.astype('>u4')
+    bits_big_endian.tofile(rf"Generadores\BIN_LogiMapp.bin")
+
     print("Secuencia guardada en  : BIN_LogiMapp.bin")

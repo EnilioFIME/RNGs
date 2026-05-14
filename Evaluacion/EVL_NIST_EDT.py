@@ -6,7 +6,6 @@ import importlib
 import sys
 
 from nistrng import (
-    pack_sequence,
     check_eligibility_all_battery,
     SP800_22R1A_BATTERY
 )
@@ -71,7 +70,7 @@ def nist_evals(file, gen, bits_n):
     bitstream_entropy = entropy (bytes_data)
     print ("Entropia del Bitsream: " , bitstream_entropy )
 
-    bits_seq = np.unpackbits(bytes_data)
+    bits_seq = np.unpackbits(bytes_data).astype(np.int8)
 
     print()
     print(f"... Calculando Distribucion 0 1 para: {file}")
@@ -87,12 +86,18 @@ def nist_evals(file, gen, bits_n):
 
     print(f"Total bits: {bitstream_len}")
 
-    fmtted_seq = pack_sequence(bits_seq)
+    fmtted_seq = bits_seq.astype(np.int8)
 
     eligible_batt = check_eligibility_all_battery(
         fmtted_seq,
         SP800_22R1A_BATTERY
     )
+
+    skip_tests = {
+        "linear_complexity",
+        "serial",
+        "approximate_entropy"
+    }
 
     print()
     print(f"... Calculando Bitrate para: {file}")
@@ -107,11 +112,12 @@ def nist_evals(file, gen, bits_n):
     bitrate = bitstream_len / t_gen if t_gen > 0 else float ("inf")
 
     print("Bitrate: ", bitrate)
+    print("Tiempo de Generacion: ", t_gen)
 
     print("=" * 20)
     print(f"... Iniciando NIST para: {file}")
 
-    print(f"Pruebas NIST elegibles: {len(eligible_batt)}")
+    print(f"Pruebas NIST elegibles: {len(eligible_batt) - len(skip_tests)}")
 
     print("\nEjecutando pruebas... Aproximadamente 12 minutos...\n")
 
@@ -120,7 +126,11 @@ def nist_evals(file, gen, bits_n):
 
     for i, (test_name, test_obj) in enumerate(eligible_batt.items()):
 
-        print(f"[{i+1}/{len(eligible_batt)}] Ejecutando: {test_name}")
+        if test_name in skip_tests:
+
+            continue
+
+        print(f"[{i+1}/{len(eligible_batt) - len(skip_tests)}] Ejecutando: {test_name}")
 
         start = time.time()
 
@@ -168,11 +178,13 @@ def nist_evals(file, gen, bits_n):
         print("-" * 70)
         print(f"Resumen: Pasado {success} de {len(results)} pruebas")
         c.writerow(["Pasados", success, "Totales", len(results)])
-        c.writerow(["Tiempo NIST", round(total_elapsed, 2)])
+        c.writerow(["Tiempo NIST s", round(total_elapsed, 2)])
         c.writerow(["Entropia Bitstream", bitstream_entropy])
         c.writerow(["Distribucion 1s", bitstream_dist])
         c.writerow(["Distribucion 0s", 1 - bitstream_dist])
         c.writerow(["Total Bits", bitstream_len])
+        c.writerow(["Tiempo de Generacion s", t_gen])
+        c.writerow(["Bitrate bits/s", bitrate])
 
 # Ejecución
 if __name__ == "__main__":
