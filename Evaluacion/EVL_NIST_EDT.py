@@ -10,7 +10,7 @@ from nistrng import (
     SP800_22R1A_BATTERY
 )
 
-GEN = "TentMapp"
+GEN = "FPGABase"
 generator = f"GEN_{GEN}"
 bitstream = f"BIN_{GEN}"
 

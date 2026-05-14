@@ -1,6 +1,7 @@
 '''
 
 https://github.com/ArminZahedani/LFSR/blob/master/LFSR.py
+https://github.com/Vikasar24/Pseudo-Random-Bit-Generator-using-LFSR/blob/main/README.md
 
 '''
 

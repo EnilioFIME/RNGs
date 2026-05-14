@@ -71,7 +71,7 @@ def simular_chi_cuadrado(cipher_vec: np.ndarray) -> float:
 with open(rf"Generadores\{bitstream}.bin", "rb") as f:
     keystream = f.read()
 
-with open(r"EntornoDeSimulacion\mensaje.txt", "rb") as f:
+with open(r"Simulacion\mensaje.txt", "rb") as f:
     message = f.read()
 
 cipher = xor_strings(message, keystream)
@@ -106,7 +106,7 @@ for k, v in results.items():
     print(f"{k:<30}: {v}")
 print ("=" * 40)
 
-route = rf"EntornoDeSimulacion\RES_SIM_XORCiph_{bitstream}.csv"
+route = rf"Simulacion\RES_SIM_XORCiph_{bitstream}.csv"
 
 with open(route, "w", newline="", encoding="utf-8") as file:
     f = csv.writer(file)
