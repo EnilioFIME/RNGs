@@ -16,15 +16,15 @@ import matplotlib.pyplot as plt
 import struct
 import math as mt
 
-def logistic_mapping (x, mu):
+def _logistic_mapping (x, mu):
 
     return mu * x * (1 - x)
 
-def function_seed (seed):
+def _function_seed (seed):
 
     return seed / 9999999
 
-def mu_change (x, mu):      # Funcion determinista reproducible
+def _mu_change (x, mu):      # Funcion determinista reproducible
 
     y = 2
     tmp_list = []
@@ -32,7 +32,7 @@ def mu_change (x, mu):      # Funcion determinista reproducible
     if x >= 0.5 :
 
         for _ in range(y): 
-            x = logistic_mapping (x, mu)
+            x = _logistic_mapping (x, mu)
         
         mu = 3.99
     
@@ -40,7 +40,7 @@ def mu_change (x, mu):      # Funcion determinista reproducible
 
         for _ in range(y): 
 
-            x = logistic_mapping (x, mu)
+            x = _logistic_mapping (x, mu)
             tmp = 3.86 + (x * 0.14)
             tmp_list.append(tmp)
 
@@ -48,14 +48,14 @@ def mu_change (x, mu):      # Funcion determinista reproducible
 
     return x, mu
 
-def pointer_casting (x):
+def _pointer_casting (x):
 
     return struct.unpack('Q', struct.pack('d', x))[0]
 
-def unsigned_int (x1, x2):          #32 bit addition and XOR
+def _unsigned_int (x1, x2):          #32 bit addition and XOR
 
-    C1 = pointer_casting(x1)
-    C2 = pointer_casting(x2)
+    C1 = _pointer_casting(x1)
+    C2 = _pointer_casting(x2)
 
     M1 =  C1        & 0xFFFFFFFF    #LSB C1
     M2 = (C1 >> 32) & 0xFFFFFFFF    #MSB C1
@@ -67,31 +67,48 @@ def unsigned_int (x1, x2):          #32 bit addition and XOR
 
     return v
 
+mu = 3.99                      # Parametro de crecimiento
+seed = 2043379
 
+def gen_bits (bits_n, mu_init = 3.99) :
 
-# Params
-target_bits = 1_000_000
-bits_per_val = 32
+    x0 = _function_seed (seed) # x inicial
+    n = bits_n                 # Iteraciones
 
-mu = 3.99                               # Parametro de crecimiento
-x0 = function_seed (2043379)            # x inicial
-n = mt.ceil(target_bits / bits_per_val) # Iteraciones
+    mu = mu_init
 
-xtemp = x0
-for _ in range (1000):
+    xtemp = x0
+    for _ in range (1000):
 
-    xtemp, _ = mu_change (xtemp, mu)
+        xtemp, _ = _mu_change (xtemp, mu)
 
-x = np.zeros(n)
-px = np.zeros(n, dtype=np.uint32)
+    x = np.zeros(n)
+    px = np.zeros(n, dtype=np.uint32)
 
-x [0] = xtemp
-px[0] = unsigned_int (x[0], x0)
+    x [0] = xtemp
+    px[0] = _unsigned_int (x[0], x0)
 
-for i in range(1,n):
+    for i in range(1,n):
 
-    x [i], mu = mu_change (x[i - 1], mu)
-    px[i] = unsigned_int  (x[i], x[i-1])
+        x [i], mu = _mu_change (x[i - 1], mu)
+        px[i] = _unsigned_int  (x[i], x[i-1])
 
-px.tofile(r"Generadores\BIN_LogiMapp.bin")
-print("Secuencia guardada en  : BIN_LogiMapp.bin")
+    return px
+
+if __name__ == "__main__":
+
+    import os
+    import math as mt
+
+    # Params
+    target_bits = 1_000_000
+    bits_per_val = 32
+
+    os.makedirs("Generadores", exist_ok=True)
+
+    val = mt.ceil(target_bits / bits_per_val)
+
+    bits = gen_bits (val)
+
+    bits.tofile(r"Generadores\BIN_LogiMapp.bin")
+    print("Secuencia guardada en  : BIN_LogiMapp.bin")

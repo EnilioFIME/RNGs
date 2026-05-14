@@ -90,4 +90,5 @@ with open(route, "w", newline="", encoding="utf-8") as file:
     for text, value in results.items():
 
         f.writerow([text, value])
+        
 print(f"CSV GUARDADO EN: {route} ")

@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import struct
 import math as mt
 
-def tent_mapping (x, mu):
+def _tent_mapping (x, mu):
 
     if x < 0.5:
 
@@ -26,11 +26,11 @@ def tent_mapping (x, mu):
 
         return mu * ( 1 - x )
 
-def function_seed (seed):
+def _function_seed (seed):
 
     return seed / 9999999
 
-def lfsr (bits_in): 
+def _lfsr (bits_in): 
 
     lfsr_State = 0b11111111
 
@@ -62,25 +62,39 @@ def lfsr (bits_in):
 '''
 
 # Params
-target_bits = 1_000_000
-
 mu = 2                                   # Parametro de crecimiento
-x0 = function_seed (2043379)             # x inicial
-n  = target_bits                         # Iteraciones
+seed = 2043379
 
-x = np.zeros(n)
-px = np.zeros(n, dtype=np.uint8)
+def gen_bits (bits_n):
 
-x [ 0 ] = x0
+    x0 = _function_seed (seed)                # x inicial
+    n  = bits_n                         # Iteraciones
 
-for i in range(1,n):
+    x = np.zeros(n)
+    px = np.zeros(n, dtype=np.uint8)
 
-    x [ i ] = tent_mapping (x[ i - 1 ], mu) + 1e-15 # Agregar ruido microscopido
-    x [ i ] %= 1.0                                  # Aegurarnos que no se "salga" del rango
+    x [ 0 ] = x0
+
+    for i in range(1,n):
+
+        x [ i ] = _tent_mapping (x[ i - 1 ], mu) + 1e-15 # Agregar ruido microscopido
+        x [ i ] %= 1.0                                  # Aegurarnos que no se "salga" del rango
+        
+    bits = ( x >= 0.5 ).astype (np.uint8)
+    px = _lfsr (bits)
+
+    return px
+
+if __name__ == "__main__":
+
+    import os
+
+    target_bits = 1_000_000
     
-bits = ( x >= 0.5 ).astype (np.uint8)
-px = lfsr (bits)
-px = np.packbits(px)
+    os.makedirs("Generadores", exist_ok=True)
 
-px.tofile("Generadores\BIN_TentMapp.bin")
-print("Secuencia guardada en  : BIN_TentMapp.bin")
+    bits = gen_bits (target_bits)
+    packed = np.packbits(bits)
+
+    packed.tofile(r"Generadores\BIN_TentMapp.bin")
+    print("Secuencia guardada en  : BIN_TentMapp.bin")
