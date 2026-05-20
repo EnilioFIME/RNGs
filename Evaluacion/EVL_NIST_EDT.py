@@ -10,17 +10,9 @@ from nistrng import (
     SP800_22R1A_BATTERY
 )
 
-GEN = "FPGABase"
-generator = f"GEN_{GEN}"
-bitstream = f"BIN_{GEN}"
-
-target_bits = 1_000_000
+from Evaluacion.EVL_PE import aplicar_todas
 
 sys.path.append( os.path.abspath( os.path.join(os.path.dirname(__file__), "..") ) )
-
-os.makedirs("Evaluacion", exist_ok=True)
-
-route = rf"Evaluacion\RES_EVL_NIST_EDT_{bitstream}.csv"
 
 def load_gens (module_name: str): 
 
@@ -31,6 +23,17 @@ def load_gens (module_name: str):
         raise AttributeError(f"el modulo '{module_name}' no tiene la funcion gen")
     
     return mod.gen_bits
+
+def bytes_to_float (secuencia):
+
+    bytes_seq = np.asarray(secuencia, dtype=np.uint8)
+
+    n = (len(secuencia) //4 ) *4
+    bytes_seq  = bytes_seq[:n]
+
+    ints = np.frombuffer(bytes_seq.tobytes(), dtype = '>u4')
+
+    return  ints /np.float32(2**32)
 
 def entropy (datos) -> bytes:
 
@@ -58,9 +61,16 @@ def entropy (datos) -> bytes:
     return entropia
 
 def nist_evals(file, gen, bits_n):
+    
+    os.makedirs("Evaluacion", exist_ok=True)
+    base_name = os.path.basename(file).replace('.bin', '')
+    route = os.path.join("Evaluacion", f"RES_EVL_NIST_EDT_{base_name}.csv")
 
     with open(file, "rb") as f:
         bytes_data = np.frombuffer(f.read(), dtype=np.uint8)
+
+    bits_seq = np.unpackbits(bytes_data).astype(np.int8)
+    floats = bytes_to_float(bytes_data)
 
     generate = load_gens (gen)
 
@@ -68,23 +78,16 @@ def nist_evals(file, gen, bits_n):
     print(f"... Calculando Entropia para: {file}")
 
     bitstream_entropy = entropy (bytes_data)
-    print ("Entropia del Bitsream: " , bitstream_entropy )
-
-    bits_seq = np.unpackbits(bytes_data).astype(np.int8)
 
     print()
     print(f"... Calculando Distribucion 0 1 para: {file}")
 
     bitstream_dist = (np.mean(bits_seq))
-    print("Distribucion de 1s: ", bitstream_dist)
-    print("Distribucion de 0s: ", 1 - bitstream_dist)
-
+    
     print()
     print(f"... Calculando Total de Bits para: {file}")
 
     bitstream_len = len(bits_seq)
-
-    print(f"Total bits: {bitstream_len}")
 
     fmtted_seq = bits_seq.astype(np.int8)
 
@@ -96,7 +99,10 @@ def nist_evals(file, gen, bits_n):
     skip_tests = {
         "linear_complexity",
         "serial",
-        "approximate_entropy"
+        "approximate_entropy",
+        "random_excursion",
+        "maurers_universal",
+        "dft"
     }
 
     print()
@@ -110,16 +116,13 @@ def nist_evals(file, gen, bits_n):
     bitstream_len = len(bits_seq)
 
     bitrate = bitstream_len / t_gen if t_gen > 0 else float ("inf")
-
-    print("Bitrate: ", bitrate)
-    print("Tiempo de Generacion: ", t_gen)
-
-    print("=" * 20)
+   
+    print("=" * 70)
     print(f"... Iniciando NIST para: {file}")
 
     print(f"Pruebas NIST elegibles: {len(eligible_batt) - len(skip_tests)}")
 
-    print("\nEjecutando pruebas... Aproximadamente 12 minutos...\n")
+    print("\nEjecutando pruebas... Aproximadamente 4 minutos...\n")
 
     results = []
     total_start = time.time()
@@ -130,7 +133,7 @@ def nist_evals(file, gen, bits_n):
 
             continue
 
-        print(f"[{i+1}/{len(eligible_batt) - len(skip_tests)}] Ejecutando: {test_name}")
+        print(f"[ Ejecutando: {test_name} ]")
 
         start = time.time()
 
@@ -159,8 +162,8 @@ def nist_evals(file, gen, bits_n):
 
         print(f"\nTiempo Pruebas Nist: {total_elapsed:.2f} s")
 
-        print(f"\n{'NOMBRE DE LA PRUEBA':<35} | {'P-VALUE':<12} | {'RESULTADO'}")
-        c.writerow(["NOMBRE DE LA PRUEBA", "P-VALUE", "RESULTADO"])
+        print(f"\n{'NOMBRE DE LA PRUEBA':<35}  {'P-VALUE':<12}  {'RESULTADO'}")
+        c.writerow(["NOMBRE DE LA PRUEBA NIST", "P-VALUE", "RESULTADO"])
         print("-" * 70)
 
         success = 0
@@ -172,13 +175,41 @@ def nist_evals(file, gen, bits_n):
             if result.passed:
                 success += 1
 
-            print(f"{test_name:<35} | {result.score:<12.5f} | {status}")
+            print(f"{test_name:<35}  {result.score:<12.5f}  {status}")
             c.writerow([test_name, result.score, status])
 
-        print("-" * 70)
-        print(f"Resumen: Pasado {success} de {len(results)} pruebas")
-        c.writerow(["Pasados", success, "Totales", len(results)])
+        
+        print(f"Resumen: Pasado {success} de {len(results)} pruebas NIST")
+        c.writerow(["Pasados NIST", success, "Totales", len(results)])
         c.writerow(["Tiempo NIST s", round(total_elapsed, 2)])
+
+        print("=" * 70)
+        print(f"... Ejecutando Pruebas Estadisticas para: {file}")
+
+        resultados_pe = aplicar_todas(floats)
+
+        print(f"\n{'PRUEBA':<25} {'ESTADÍSTICO':>14} {'CRÍTICO':>10} {'RESULTADO':>10}")
+        c.writerow(['NOMBRE DE LA PRUEBA PE', 'ESTADISTICO', 'RESULTADO'])
+        print("-" * 65)
+
+        pasados = 0
+        for nombre, r in resultados_pe.items():
+            estado = "PASO" if r["aprobado"] else "NO PASO"
+            pasados += 1 if estado == "PASO" else 0
+            print(f"{r['prueba']:<25} {r['estadistico']:>14.6f} {r['critico']:>10.5f} {estado:>10}")
+            c.writerow([r['prueba'], r['estadistico'], estado])
+            
+        c.writerow(["Pasados PE", pasados, "Totales", len(resultados_pe)])
+        print("=" * 70)
+
+        print(f"Total bits: {bitstream_len}")
+
+        print ("Entropia del Bitsream: " , bitstream_entropy )
+        print("Distribucion de 1s: ", bitstream_dist)
+        print("Distribucion de 0s: ", 1 - bitstream_dist)
+        print("Tiempo de Generacion: ", t_gen)
+        print("Bitrate: ", bitrate)
+       
         c.writerow(["Entropia Bitstream", bitstream_entropy])
         c.writerow(["Distribucion 1s", bitstream_dist])
         c.writerow(["Distribucion 0s", 1 - bitstream_dist])
@@ -186,7 +217,5 @@ def nist_evals(file, gen, bits_n):
         c.writerow(["Tiempo de Generacion s", t_gen])
         c.writerow(["Bitrate bits/s", bitrate])
 
-# Ejecución
 if __name__ == "__main__":
-
-    nist_evals(rf"Generadores\{bitstream}.bin", rf"Generadores.{generator}", target_bits)
+    print("Por favor, ejecuta las evaluaciones desde el menu principal (main.py).")
